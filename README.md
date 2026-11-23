@@ -1,6 +1,27 @@
 # importroute
 
+[![Tests](https://github.com/anishpentyala/importroute/actions/workflows/tests.yml/badge.svg)](https://github.com/anishpentyala/importroute/actions)
+
 Explain where a Python name would be found in an explicit, ordered set of directories, without importing the target package.
+
+## Quickstart
+
+```sh
+python -m pip install "git+https://github.com/anishpentyala/importroute.git"
+mkdir -p demo/checkout demo/site
+printf 'raise RuntimeError("do not import this")\n' > demo/checkout/widget.py
+printf 'pass\n' > demo/site/widget.py
+importroute widget --path demo/checkout --path demo/site --expect-under demo/site --json
+```
+
+This exits 1 with top-level `FAILED` and per-module `EXPECTATION_FAILED`: the first root selects the checkout's
+`widget.py`, outside the expected site directory. The exception in that file
+does not run. Reverse the two `--path` arguments and this example passes.
+This models declared filesystem roots, not custom import hooks or a live
+process's full import behavior.
+
+A PyPI release is being prepared. Until its package page is linked here, use the
+source-install command above.
 
 A checkout can hide an installed dependency. A regular package in a later root can replace earlier namespace portions. A package can also win over a same-name module at one root. `importroute` shows the candidates and the route through each dotted-name component, and can fail a CI check when that route leaves an expected directory.
 
@@ -36,7 +57,7 @@ importroute widget --path demo/checkout --path demo/site \
   --expect-under demo/site --json
 ```
 
-This exits 1 with `EXPECTATION_FAILED`, because the first directory wins. Reversing the two `--path` arguments makes this example pass.
+This exits 1 with top-level `FAILED` and per-module `EXPECTATION_FAILED`, because the first directory wins. Reversing the two `--path` arguments makes this example pass.
 
 For a dotted name:
 
