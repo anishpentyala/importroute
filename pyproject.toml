@@ -6,10 +6,17 @@ build-backend = "setuptools.build_meta"
 name = "importroute"
 version = "0.1.0"
 description = "Explain declared Python filesystem import routes without importing target packages"
+authors = [{name = "Anish Pentyala"}]
+keywords = ["python", "imports", "debugging", "static-analysis"]
 requires-python = ">=3.10"
 license = {text = "MIT"}
 readme = "README.md"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/anishpentyala/importroute"
+Repository = "https://github.com/anishpentyala/importroute"
+Issues = "https://github.com/anishpentyala/importroute/issues"
 
 [project.scripts]
 importroute = "importroute.__main__:entrypoint"
