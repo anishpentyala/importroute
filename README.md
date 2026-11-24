@@ -7,7 +7,7 @@ Explain where a Python name would be found in an explicit, ordered set of direct
 ## Quickstart
 
 ```sh
-python -m pip install "git+https://github.com/anishpentyala/importroute.git"
+python -m pip install importroute==0.1.0
 mkdir -p demo/checkout demo/site
 printf 'raise RuntimeError("do not import this")\n' > demo/checkout/widget.py
 printf 'pass\n' > demo/site/widget.py
@@ -20,8 +20,14 @@ does not run. Reverse the two `--path` arguments and this example passes.
 This models declared filesystem roots, not custom import hooks or a live
 process's full import behavior.
 
-A PyPI release is being prepared. Until its package page is linked here, use the
-source-install command above.
+Install the pinned 0.1.0 release from [PyPI](https://pypi.org/project/importroute/0.1.0/):
+
+```sh
+python -m pip install importroute==0.1.0
+```
+
+The package release is pinned separately from later repository development.
+Source-install commands in this README use the checked-out code, which may be newer.
 
 A checkout can hide an installed dependency. A regular package in a later root can replace earlier namespace portions. A package can also win over a same-name module at one root. `importroute` shows the candidates and the route through each dotted-name component, and can fail a CI check when that route leaves an expected directory.
 
@@ -36,7 +42,7 @@ python -m pip install .
 importroute --help
 ```
 
-Run the tool with the interpreter whose default extension suffixes you want to model. Installation from this checkout is the supported installation instruction. No package-registry release is assumed.
+Run the tool with the interpreter whose default extension suffixes you want to model. The pinned PyPI release and installation from this checkout are separate options; the checkout may contain newer changes.
 
 ## A reproducible shadowing check
 
