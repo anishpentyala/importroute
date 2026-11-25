@@ -138,3 +138,52 @@ Tests compare 25 two-root layout pairs with the standard-library finder and 120 
 See [design and sources](docs/design.md) for the scope and evidence.
 
 MIT licensed.
+
+## Compare two declared search-path plans
+
+Before changing root order in a build or CI job, compare the modeled selections:
+
+```sh
+importroute widget --path demo/checkout --path demo/site \
+  --compare-path demo/site --compare-path demo/checkout --json
+```
+
+`--path` is the baseline plan; repeated `--compare-path` values form the candidate
+plan. Both are scanned **now**, sequentially against the observed filesystem,
+not loaded from historical snapshots. Target code is never read or imported.
+The source-only API is:
+
+```python
+from importroute import compare_routes
+report = compare_routes(['widget'], ['demo/checkout', 'demo/site'],
+                        ['demo/site', 'demo/checkout'])
+```
+
+The full JSON embeds both ordinary traces plus one comparison row per requested
+module. It compares the terminal module status and the selection at **every**
+dotted component: kind, storage, lexical origin, and ordered namespace locations
+(including repeated portions). It reports the first changed component's zero-based
+index when known. Differences only in discarded candidates, root positions or
+scan counts do not count as selected-route changes, but remain in the full traces.
+A symlink alias is a different lexical origin even if it points to the same file.
+Identical paths do not prove equal code bytes.
+
+| Comparison status | Exit | Meaning |
+| --- | --- | --- |
+| `UNCHANGED` | 0 | Selected routes/statuses agree in this model |
+| `CHANGED` | 1 | At least one selected route/status differs |
+| `INCOMPLETE` | 3 | At least one side could not be fully checked |
+| `INVALID` | 2 | Invalid invocation/input, or output delivery failed |
+
+Incomplete dominates changed, and no first-change witness is asserted for an
+incomplete module. Two missing names or two identical failed root expectations
+can be `UNCHANGED`: exit 0 is **not** a loadability or expectation pass. With
+`--expect-under`, inspect each embedded trace's verdict. Builtin/frozen precedence
+remains incomplete, not a successful filesystem comparison. Each side has an
+independent normal scan budget, so two plans may scan twice the normal limit in
+total. Slow filesystem calls and concurrent edits are still outside the bound.
+
+No runtime import, historical file change, source-content equality, environment
+migration, rollout safety or dynamic initializer behavior is verified. Normal
+single-plan output is unchanged. This is a source-checkout feature, not a new
+PyPI release.
