@@ -6,14 +6,27 @@ import os
 import sys
 from functools import partial
 
+from .comparison import compare_routes
 from .core import trace_imports
 
-CODES = {'LOCATED': 0, 'FAILED': 1, 'INVALID': 2, 'INCOMPLETE': 3}
+CODES = {'LOCATED': 0, 'FAILED': 1, 'INVALID': 2, 'INCOMPLETE': 3,
+         'UNCHANGED': 0, 'CHANGED': 1}
 
 
 def _human(report):
     if report['status'] == 'INVALID':
         return 'INVALID: ' + repr(report['error']) + '\n'
+    if report['format'] == 'importroute-comparison/v1':
+        lines = ['Declared path-plan comparison: ' + report['status']]
+        for item in report['modules']:
+            lines.append(item['module'] + ': ' + item['status'] + ' (' +
+                         item['before_status'] + ' -> ' + item['after_status'] + ')')
+            if item['first_changed_step'] is not None:
+                lines.append('  first changed component index: ' +
+                             str(item['first_changed_step']))
+        lines.append(report['scope'])
+        lines.append('Use --json for complete before/after traces.')
+        return '\n'.join(lines) + '\n'
     lines = ['Filesystem import routes, not runtime import verification.']
     for item in report['modules']:
         lines.append(item['module'] + ': ' + item['status'])
@@ -48,10 +61,16 @@ def _run(argv=None):
     parser.add_argument('--path', action='append', required=True,
                         help='ordered search directory, repeat for each root; at most 64')
     parser.add_argument('--expect-under', help='require every selected component under this directory')
+    parser.add_argument('--compare-path', action='append',
+                        help='candidate ordered roots; compares with --path, repeat for each root')
     parser.add_argument('--json', action='store_true', help='emit the full versioned JSON report')
     args = parser.parse_args(argv)
     try:
-        report = trace_imports(args.modules, args.path, expected_root=args.expect_under)
+        if args.compare_path is None:
+            report = trace_imports(args.modules, args.path, expected_root=args.expect_under)
+        else:
+            report = compare_routes(args.modules, args.path, args.compare_path,
+                                    expected_root=args.expect_under)
     except (OSError, ValueError, TypeError) as exc:
         report = {'format': 'importroute/v1', 'status': 'INVALID', 'error': str(exc)}
     payload = (json.dumps(report, ensure_ascii=True, allow_nan=False, sort_keys=True) + '\n'
