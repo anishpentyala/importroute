@@ -2,7 +2,6 @@
 import argparse
 import inspect
 import json
-import os
 import sys
 from functools import partial
 
@@ -11,6 +10,24 @@ from .core import trace_imports
 
 CODES = {'LOCATED': 0, 'FAILED': 1, 'INVALID': 2, 'INCOMPLETE': 3,
          'UNCHANGED': 0, 'CHANGED': 1}
+
+
+def _deliver(stream, text):
+    if stream is None:
+        raise OSError('output stream is unavailable')
+    accepted = stream.write(text)
+    if type(accepted) is not int or accepted != len(text):
+        raise OSError('output stream did not accept complete text')
+    stream.flush()
+
+
+_PARSER_DEFAULT = object()
+
+
+class _Parser(argparse.ArgumentParser):
+    def _print_message(self, message, file=_PARSER_DEFAULT):
+        if message:
+            _deliver(sys.stderr if file is _PARSER_DEFAULT else file, message)
 
 
 def _human(report):
@@ -54,7 +71,7 @@ def _run(argv=None):
         options['color'] = False
     if 'color' in inspect.signature(argparse.HelpFormatter).parameters:
         options['formatter_class'] = partial(argparse.HelpFormatter, color=False)
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         description='Explain explicit Python filesystem routes without importing target packages.',
         **options)
     parser.add_argument('modules', nargs='+', help='absolute dotted module identifiers, at most 128')
@@ -64,7 +81,10 @@ def _run(argv=None):
     parser.add_argument('--compare-path', action='append',
                         help='candidate ordered roots; compares with --path, repeat for each root')
     parser.add_argument('--json', action='store_true', help='emit the full versioned JSON report')
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except (OSError, ValueError, AttributeError):
+        return 2, True
     try:
         if args.compare_path is None:
             report = trace_imports(args.modules, args.path, expected_root=args.expect_under)
@@ -76,9 +96,7 @@ def _run(argv=None):
     payload = (json.dumps(report, ensure_ascii=True, allow_nan=False, sort_keys=True) + '\n'
                if args.json else _human(report))
     try:
-        if sys.stdout.write(payload) != len(payload):
-            return 2, True
-        sys.stdout.flush()
+        _deliver(sys.stdout, payload)
     except (OSError, ValueError, AttributeError):
         return 2, True
     return CODES[report['status']], False
@@ -90,14 +108,20 @@ def main(argv=None):
 
 
 def entrypoint():
-    code, failed = _run()
-    if failed:
+    """Own process shutdown, including argparse's successful SystemExit paths."""
+    try:
+        code, _ = _run()
+    except SystemExit as exc:
+        code = exc.code
+    for name in ('stdout', 'stderr'):
+        stream = getattr(sys, name)
+        if stream is None:
+            continue
         try:
-            descriptor = sys.stdout.fileno()
-            with open(os.devnull, 'w') as sink:
-                os.dup2(sink.fileno(), descriptor)
+            stream.flush()
         except (OSError, ValueError, AttributeError):
-            sys.stdout = open(os.devnull, 'w')
+            setattr(sys, name, None)
+            code = 2
     return code
 
 
