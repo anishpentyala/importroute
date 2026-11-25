@@ -187,3 +187,17 @@ No runtime import, historical file change, source-content equality, environment
 migration, rollout safety or dynamic initializer behavior is verified. Normal
 single-plan output is unchanged. This is a source-checkout feature, not a new
 PyPI release.
+
+### Complete CLI text delivery in the source checkout
+
+Help and usage messages now use the same checked write-and-flush boundary as
+reports. Short writes, non-integer write results, unavailable streams, and
+write/flush failures return exit 2. The process runner checks both standard
+streams before shutdown, including help/usage exits, so a failed flush does not
+turn into Python's shutdown exit 120. Partial bytes cannot be retracted.
+
+Embedded `main(argv)` does not close or replace caller-owned streams. Successful
+help and usage parsing still raise the usual `SystemExit(0)` or `SystemExit(2)`.
+The installed command and `python -m importroute` own their shutdown handling.
+Report fields, route selection and ordinary successful text are unchanged.
+This is a source-checkout fix, not a new package-index release.
